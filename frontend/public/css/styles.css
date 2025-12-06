@@ -1,0 +1,165 @@
+:root {
+    --primary-color: #ff6b6b;
+    --secondary-color: #4ecdc4;
+    --dark-bg: #1a1a2e;
+    --card-bg: #16213e;
+    --text-color: #e94560;
+    --light-text: #f1f1f1;
+    --input-bg: #0f3460;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--dark-bg);
+    color: var(--light-text);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+nav {
+    background-color: var(--card-bg);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+nav a {
+    color: var(--light-text);
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+nav a:hover {
+    color: var(--primary-color);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 20px;
+    flex: 1;
+}
+
+h1, h2 {
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    margin-bottom: 2rem;
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--secondary-color);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid var(--input-bg);
+    background-color: var(--input-bg);
+    color: var(--light-text);
+    font-size: 1rem;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    width: 100%;
+}
+
+button:hover {
+    background-color: #ff5252;
+}
+
+/* Product Grid */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.product-card {
+    background-color: var(--card-bg);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid var(--input-bg);
+}
+
+.product-price {
+    font-size: 1.5rem;
+    color: var(--secondary-color);
+    margin: 1rem 0;
+}
+
+/* Cart */
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--input-bg);
+}
+
+.cart-total {
+    text-align: right;
+    font-size: 1.5rem;
+    margin-top: 2rem;
+    color: var(--secondary-color);
+}
+
+.remove-btn {
+    background-color: #e74c3c;
+    width: auto;
+    padding: 5px 10px;
+}
+
+.error-message {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    margin-top: 5px;
+    display: none;
+}
+
+.success-message {
+    background-color: var(--secondary-color);
+    color: var(--dark-bg);
+    padding: 1rem;
+    border-radius: 5px;
+    text-align: center;
+    margin-bottom: 1rem;
+}

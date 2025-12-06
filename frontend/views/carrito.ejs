@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrito - Pizzeria</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Pizzeria Premium</div>
+        <div>
+            <a href="/tienda">Inicio</a>
+            <a href="/perfil">Perfil</a>
+            <a href="/carrito">Carrito 🛒</a>
+            <a href="/logout">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Carrito de Compras</h1>
+
+        <% if (cartItems.length===0) { %>
+            <div class="card" style="text-align: center;">
+                <p>Tu carrito está vacío.</p>
+                <a href="/tienda" style="color: var(--secondary-color);">Volver a la tienda</a>
+            </div>
+            <% } else { %>
+                <div class="card">
+                    <% cartItems.forEach(function(item) { %>
+                        <div class="cart-item">
+                            <div>
+                                <h3>
+                                    <%= item.name %>
+                                </h3>
+                                <p>Precio: $<%= item.price %>
+                                </p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 20px;">
+                                <p>Cantidad: <%= item.quantity %>
+                                </p>
+                                <p style="font-weight: bold;">Subtotal: $<%= item.total %>
+                                </p>
+                                <a href="/carrito/remove/<%= item.id %>" class="remove-btn"
+                                    style="text-decoration: none; color: white; border-radius: 5px;">Eliminar</a>
+                            </div>
+                        </div>
+                        <% }); %>
+
+                            <div class="cart-total">
+                                Total: $<%= total %>
+                            </div>
+
+                            <form action="/comprar" method="POST" style="margin-top: 2rem;">
+                                <button type="submit" style="font-size: 1.2rem; padding: 15px;">Proceder al
+                                    Pago</button>
+                            </form>
+                </div>
+                <% } %>
+    </div>
+</body>
+
+</html>

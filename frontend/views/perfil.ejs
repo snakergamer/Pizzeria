@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil - Pizzeria</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Pizzeria Premium</div>
+        <div>
+            <a href="/tienda">Inicio</a>
+            <a href="/perfil">Perfil</a>
+            <a href="/carrito">Carrito 🛒</a>
+            <a href="/logout">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card" style="max-width: 600px; margin: 0 auto;">
+            <h1>Perfil de Usuario</h1>
+            <div style="margin-bottom: 2rem; text-align: center;">
+                <p style="font-size: 1.2rem;">Total de Compras: <span
+                        style="color: var(--secondary-color); font-weight: bold;">
+                        <%= user.purchase_count %>
+                    </span></p>
+            </div>
+
+            <h2>Editar Perfil</h2>
+            <form action="/perfil/update" method="POST" onsubmit="return validateRegister()">
+                <!-- Reusing validation logic -->
+                <div class="form-group">
+                    <label for="username">Nombre de Usuario</label>
+                    <input type="text" id="username" name="username" value="<%= user.username %>" required>
+                    <div id="usernameError" class="error-message"></div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo Electrónico</label>
+                    <input type="email" id="email" name="email" value="<%= user.email %>" required>
+                    <div id="emailError" class="error-message"></div>
+                </div>
+                <!-- Hidden password field to keep it if not changed, or simple re-entry for validation -->
+                <div class="form-group">
+                    <label for="password">Confirmar/Nueva Contraseña</label>
+                    <input type="password" id="password" name="password" value="<%= user.password %>" required>
+                    <div id="passwordError" class="error-message"></div>
+                </div>
+                <button type="submit">Actualizar Perfil</button>
+            </form>
+        </div>
+    </div>
+    <script src="/js/authValidation.js"></script>
+</body>
+
+</html>
