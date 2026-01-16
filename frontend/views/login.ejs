@@ -1,18 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - Pizzeria</title>
+    <title>Iniciar Sesión - Pizzería</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
-
 <body>
     <div class="container" style="max-width: 400px; margin-top: 10vh;">
         <div class="card">
             <h1>Iniciar Sesión</h1>
-            <form action="/login" method="POST" onsubmit="return validateLogin()">
+            
+            <% if (error) { %>
+                <div class="error-message" style="display: block; background: #ff6b6b; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                    <%= error %>
+                </div>
+            <% } %>
+            
+            <form action="/login" method="POST">
                 <div class="form-group">
                     <label for="email">Correo Electrónico</label>
                     <input type="email" id="email" name="email" required>
@@ -28,7 +33,5 @@
             </p>
         </div>
     </div>
-    <script src="/js/authValidation.js"></script>
 </body>
-
 </html>

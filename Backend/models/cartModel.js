@@ -7,7 +7,6 @@ const Cart = function (cart) {
 };
 
 Cart.addToCart = (newCartItem, result) => {
-    // Check if item already exists in cart
     sql.query("SELECT * FROM carrito WHERE user_id = ? AND product_id = ?",
         [newCartItem.user_id, newCartItem.product_id], (err, res) => {
             if (err) {
@@ -17,19 +16,20 @@ Cart.addToCart = (newCartItem, result) => {
             }
 
             if (res.length > 0) {
-                // Update quantity
+                const cartId = res[0].id;
                 const newQuantity = res[0].quantity + newCartItem.quantity;
+                console.log('📦 Actualizando cantidad en carrito ID:', cartId, 'Nueva cantidad:', newQuantity);
                 sql.query("UPDATE carrito SET quantity = ? WHERE id = ?",
-                    [newQuantity, res[0].id], (err, res) => {
+                    [newQuantity, cartId], (err, updateRes) => {
                         if (err) {
-                            console.log("error: ", err);
+                            console.log("❌ error en UPDATE: ", err);
                             result(err, null);
                             return;
                         }
-                        result(null, { id: res[0].id, ...newCartItem, quantity: newQuantity });
+                        console.log('✅ Cantidad actualizada en carrito');
+                        result(null, { id: cartId, ...newCartItem, quantity: newQuantity });
                     });
             } else {
-                // Insert new item
                 sql.query("INSERT INTO carrito SET ?", newCartItem, (err, res) => {
                     if (err) {
                         console.log("error: ", err);
@@ -91,11 +91,9 @@ Cart.createSale = (userId, totalAmount, items, result) => {
                 return;
             }
 
-            // Update user purchase count
             sql.query("UPDATE usuarios SET purchase_count = purchase_count + 1 WHERE id = ?", [userId], (err, res) => {
                 if (err) {
                     console.log("error updating purchase count: ", err);
-                    // Don't fail the whole request just for this, but log it
                 }
             });
 

@@ -9,8 +9,6 @@ function validateRegister() {
 
     let isValid = true;
 
-    // Username Validation
-    // Min 3, Max 20, Only letters (upper and lower)
     const usernameRegex = /^[a-zA-Z]{3,20}$/;
     if (!usernameRegex.test(username)) {
         usernameError.style.display = 'block';
@@ -20,8 +18,6 @@ function validateRegister() {
         usernameError.style.display = 'none';
     }
 
-    // Email Validation
-    // Only @gmail.com and @hotmail.com
     const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com|hotmail\.com)$/;
     if (!emailRegex.test(email)) {
         emailError.style.display = 'block';
