@@ -6,21 +6,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfil - Pizzeria</title>
     <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            color: var(--light-text);
+        }
+
+        .history-table th,
+        .history-table td {
+            border: 1px solid var(--input-bg);
+            padding: 10px;
+            text-align: left;
+        }
+
+        .history-table th {
+            background-color: var(--input-bg);
+            color: var(--primary-color);
+        }
+    </style>
 </head>
 
 <body>
     <nav>
         <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Pizzeria Premium</div>
         <div>
-            <a href="/tienda">Inicio</a>
-            <a href="/perfil">Perfil</a>
-            <a href="/carrito">Carrito 🛒</a>
-            <a href="/logout">Cerrar Sesión</a>
+            <!-- Show Admin Link if user is admin -->
+            <% if (typeof role !=='undefined' && role==='admin' ) { %>
+                <a href="/admin" style="color: #2ecc71;">Panel Admin</a>
+                <% } %>
+                    <a href="/tienda">Inicio</a>
+                    <a href="/perfil">Perfil</a>
+                    <a href="/carrito">Carrito 🛒</a>
+                    <a href="/logout">Cerrar Sesión</a>
         </div>
     </nav>
 
     <div class="container">
-        <div class="card" style="max-width: 600px; margin: 0 auto;">
+        <div class="card">
             <h1>Perfil de Usuario</h1>
             <div style="margin-bottom: 2rem; text-align: center;">
                 <p style="font-size: 1.2rem;">Total de Compras: <span
@@ -31,7 +55,6 @@
 
             <h2>Editar Perfil</h2>
             <form action="/perfil/update" method="POST" onsubmit="return validateRegister()">
-                <!-- Reusing validation logic -->
                 <div class="form-group">
                     <label for="username">Nombre de Usuario</label>
                     <input type="text" id="username" name="username" value="<%= user.username %>" required>
@@ -42,7 +65,6 @@
                     <input type="email" id="email" name="email" value="<%= user.email %>" required>
                     <div id="emailError" class="error-message"></div>
                 </div>
-                <!-- Hidden password field to keep it if not changed, or simple re-entry for validation -->
                 <div class="form-group">
                     <label for="password">Confirmar/Nueva Contraseña</label>
                     <input type="password" id="password" name="password" value="<%= user.password %>" required>
@@ -50,6 +72,38 @@
                 </div>
                 <button type="submit">Actualizar Perfil</button>
             </form>
+        </div>
+
+        <div class="card">
+            <h2>Historial de Compras</h2>
+            <% if (history && history.length> 0) { %>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Artículos</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% history.forEach(function(sale) { %>
+                            <tr>
+                                <td>
+                                    <%= new Date(sale.purchase_date).toLocaleDateString() %>
+                                        <%= new Date(sale.purchase_date).toLocaleTimeString() %>
+                                </td>
+                                <td>
+                                    <%= sale.items %>
+                                </td>
+                                <td>$<%= sale.total_amount %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+                <% } else { %>
+                    <p>No has realizado ninguna compra aún.</p>
+                    <% } %>
         </div>
     </div>
     <script src="/js/authValidation.js"></script>

@@ -12,10 +12,14 @@
     <nav>
         <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Pizzeria Premium</div>
         <div>
-            <a href="/tienda">Inicio</a>
-            <a href="/perfil">Perfil</a>
-            <a href="/carrito">Carrito 🛒</a>
-            <a href="/logout">Cerrar Sesión</a>
+            <!-- Show Admin Link if user is admin -->
+            <% if (typeof role !=='undefined' && role==='admin' ) { %>
+                <a href="/admin" style="color: #2ecc71;">Panel Admin</a>
+                <% } %>
+                    <a href="/tienda">Inicio</a>
+                    <a href="/perfil">Perfil</a>
+                    <a href="/carrito">Carrito 🛒</a>
+                    <a href="/logout">Cerrar Sesión</a>
         </div>
     </nav>
 

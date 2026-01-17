@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administrador - Pizzeria</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+            color: var(--light-text);
+        }
+
+        .admin-table th,
+        .admin-table td {
+            border: 1px solid var(--input-bg);
+            padding: 10px;
+            text-align: left;
+        }
+
+        .admin-table th {
+            background-color: var(--card-bg);
+            color: var(--primary-color);
+        }
+
+        .action-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Pizzeria Admin</div>
+        <div>
+            <a href="/admin">Panel</a>
+            <a href="/tienda">Ver Tienda</a>
+            <a href="/logout">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Gestión de Productos</h1>
+
+        <div class="card">
+            <h2>Agregar Nueva Pizza</h2>
+            <form action="/admin/add" method="POST">
+                <div class="form-group">
+                    <label for="name">Nombre de la Pizza</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="price">Precio ($)</label>
+                    <input type="number" id="price" name="price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="stock">Existencias</label>
+                    <input type="number" id="stock" name="stock" required>
+                </div>
+                <button type="submit" style="background-color: #2ecc71;">Agregar Producto</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Productos Actuales</h2>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Reponer Stock</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% products.forEach(function(product) { %>
+                        <tr>
+                            <td>
+                                <%= product.id %>
+                            </td>
+                            <td>
+                                <%= product.name %>
+                            </td>
+                            <td>$<%= product.price %>
+                            </td>
+                            <td>
+                                <%= product.stock %>
+                            </td>
+                            <td>
+                                <form action="/admin/restock" method="POST"
+                                    style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="hidden" name="product_id" value="<%= product.id %>">
+                                    <input type="number" name="amount" min="1" max="1000" style="width: 70px;"
+                                        placeholder="Cant." required>
+                                    <button type="submit"
+                                        style="padding: 2px 8px; font-size: 0.9rem; background-color: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">+</button>
+                                </form>
+                            </td>
+                            <td>
+                                <a href="/admin/delete/<%= product.id %>" class="action-btn"
+                                    onclick="return confirm('¿Estás seguro de eliminar este producto?')">Eliminar</a>
+                            </td>
+                        </tr>
+                        <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        // Check for URL parameters to show messages
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+        const message = urlParams.get('message');
+
+        if (status && message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.style.padding = '15px';
+            alertDiv.style.marginBottom = '20px';
+            alertDiv.style.borderRadius = '5px';
+            alertDiv.style.fontWeight = 'bold';
+
+            if (status === 'success') {
+                alertDiv.style.backgroundColor = '#d4edda';
+                alertDiv.style.color = '#155724';
+                alertDiv.style.border = '1px solid #c3e6cb';
+            } else {
+                alertDiv.style.backgroundColor = '#f8d7da';
+                alertDiv.style.color = '#721c24';
+                alertDiv.style.border = '1px solid #f5c6cb';
+            }
+
+            alertDiv.innerText = message;
+
+            // Insert after H1
+            const h1 = document.querySelector('h1');
+            h1.parentNode.insertBefore(alertDiv, h1.nextSibling);
+
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    </script>
+</body>
+
+</html>

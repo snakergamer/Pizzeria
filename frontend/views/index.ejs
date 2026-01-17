@@ -12,10 +12,14 @@
     <nav>
         <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">Pizzeria Premium</div>
         <div>
-            <a href="/tienda">Inicio</a>
-            <a href="/perfil">Perfil </a>
-            <a href="/carrito">Carrito 🛒</a>
-            <a href="/logout">Cerrar Sesión</a>
+            <!-- Show Admin Link if user is admin -->
+            <% if (typeof role !=='undefined' && role==='admin' ) { %>
+                <a href="/admin" style="color: #2ecc71;">Panel Admin</a>
+                <% } %>
+                    <a href="/tienda">Inicio</a>
+                    <a href="/perfil">Perfil (<%= username %>)</a> <!-- Use username from locals -->
+                    <a href="/carrito">Carrito 🛒</a>
+                    <a href="/logout">Cerrar Sesión</a>
         </div>
     </nav>
 
@@ -39,15 +43,23 @@
                     </p>
                     <p>Existencias: <%= product.stock %>
                     </p>
-                    <form action="/carrito/add" method="POST">
-                        <input type="hidden" name="product_id" value="<%= product.id %>">
-                        <div class="form-group">
-                            <label for="quantity-<%= product.id %>">Cantidad:</label>
-                            <input type="number" id="quantity-<%= product.id %>" name="quantity" value="1" min="1"
-                                max="<%= product.stock %>" style="width: 60px; text-align: center;">
-                        </div>
-                        <button type="submit">Añadir al Carrito</button>
-                    </form>
+
+                    <% if (product.stock> 0) { %>
+                        <form action="/carrito/add" method="POST">
+                            <input type="hidden" name="product_id" value="<%= product.id %>">
+                            <div class="form-group">
+                                <label for="quantity-<%= product.id %>">Cantidad:</label>
+                                <input type="number" id="quantity-<%= product.id %>" name="quantity" value="1" min="1"
+                                    max="<%= product.stock %>" style="width: 60px; text-align: center;">
+                            </div>
+                            <button type="submit">Añadir al Carrito</button>
+                        </form>
+                        <% } else { %>
+                            <div
+                                style="background-color: #e74c3c; color: white; padding: 10px; border-radius: 5px; font-weight: bold; text-align: center;">
+                                AGOTADO
+                            </div>
+                            <% } %>
                 </div>
                 <% }); %>
         </div>

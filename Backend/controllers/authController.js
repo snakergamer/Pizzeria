@@ -1,101 +1,86 @@
 const User = require('../models/userModel.js');
+const Cart = require('../models/cartModel.js');
 
 exports.register = (req, res) => {
-    // Validation is also done on frontend, but good to have basic check here
     if (!req.body.username || !req.body.email || !req.body.password) {
-        return res.status(400).send({ message: "¡El contenido no puede estar vacío!" });
+        return res.status(400).json({ message: "¡El contenido no puede estar vacío!" });
     }
 
+    // Default role 'user' if not specified
     const user = new User({
         username: req.body.username,
         email: req.body.email,
-        password: req.body.password
+        password: req.body.password,
+        role: 'user'
     });
 
     User.create(user, (err, data) => {
         if (err) {
             if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(400).send({ message: "El nombre de usuario o el correo electrónico ya existen." });
+                return res.status(400).json({ message: "El nombre de usuario o correo ya existe." });
             }
-            return res.status(500).send({ message: err.message || "Ocurrió algún error al crear el usuario." });
+            return res.status(500).json({ message: err.message || "Error al crear usuario." });
         }
-        // Auto login after register
-        req.session.loggedin = true;
-        req.session.userId = data.id;
-        req.session.username = data.username;
-        res.redirect('/tienda');
+        res.json({ user: data });
     });
 };
 
 exports.login = (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
+    const { email, password } = req.body;
 
     if (email && password) {
         User.findByEmail(email, (err, user) => {
             if (err) {
                 if (err.kind === "not_found") {
-                    return res.status(404).send({ message: "Usuario no encontrado." }); // Or redirect with error
+                    return res.status(404).json({ message: "Usuario no encontrado." });
                 }
-                return res.status(500).send({ message: "Error al recuperar el usuario." });
+                return res.status(500).json({ message: "Error al recuperar usuario." });
             }
 
-            // Simple password check (In production use bcrypt!)
             if (user.password === password) {
-                req.session.loggedin = true;
-                req.session.userId = user.id;
-                req.session.username = user.username;
-                res.redirect('/tienda');
+                res.json({ user: user });
             } else {
-                res.send('¡Nombre de usuario y/o contraseña incorrectos!');
+                res.status(401).json({ message: "¡Contraseña incorrecta!" });
             }
         });
     } else {
-        res.send('¡Por favor ingrese nombre de usuario y contraseña!');
+        res.status(400).json({ message: "¡Por favor, proporcione correo y contraseña!" });
     }
-};
-
-exports.logout = (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return console.log(err);
-        }
-        res.redirect('/login');
-    });
 };
 
 exports.getProfile = (req, res) => {
-    if (req.session.loggedin) {
-        User.findById(req.session.userId, (err, data) => {
+    // Expecting userId in params
+    const userId = req.params.userId;
+
+    User.findById(userId, (err, userData) => {
+        if (err) {
+            return res.status(500).json({ message: "Error al recuperar usuario." });
+        }
+
+        Cart.getSalesByUserId(userId, (err, salesData) => {
             if (err) {
-                res.status(500).send({ message: "Error al recuperar el usuario." });
+                res.json({ user: userData, history: [] });
             } else {
-                res.render('perfil', { user: data });
+                userData.purchase_count = salesData.length;
+                res.json({ user: userData, history: salesData });
             }
         });
-    } else {
-        res.redirect('/login');
-    }
+    });
 };
 
 exports.updateProfile = (req, res) => {
-    if (req.session.loggedin) {
-        const userId = req.session.userId;
-        const updatedUser = new User({
-            username: req.body.username,
-            email: req.body.email,
-            password: req.body.password // Note: In a real app, handle password change separately and securely
-        });
+    const userId = req.params.userId;
+    const updatedUser = new User({
+        username: req.body.username,
+        email: req.body.email,
+        password: req.body.password
+    });
 
-        User.update(userId, updatedUser, (err, data) => {
-            if (err) {
-                res.status(500).send({ message: "Error al actualizar el usuario." });
-            } else {
-                req.session.username = data.username; // Update session username
-                res.redirect('/perfil');
-            }
-        });
-    } else {
-        res.redirect('/login');
-    }
+    User.update(userId, updatedUser, (err, data) => {
+        if (err) {
+            res.status(500).json({ message: "Error al actualizar usuario." });
+        } else {
+            res.json({ user: data });
+        }
+    });
 };

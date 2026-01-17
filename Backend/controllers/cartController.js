@@ -1,64 +1,53 @@
 const Cart = require('../models/cartModel.js');
 
 exports.addToCart = (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/login');
-    }
-
     const cartItem = new Cart({
-        user_id: req.session.userId,
+        user_id: req.body.user_id,
         product_id: req.body.product_id,
-        quantity: parseInt(req.body.quantity)
+        quantity: req.body.quantity
     });
 
     Cart.addToCart(cartItem, (err, data) => {
         if (err) {
-            res.status(500).send({ message: err.message || "Ocurrió algún error al agregar al carrito." });
+            res.status(500).json({ message: err.message || "Error al agregar al carrito." });
         } else {
-            res.redirect('/tienda');
+            res.json(data);
         }
     });
 };
 
 exports.viewCart = (req, res) => {
-    if (req.session.loggedin) {
-        Cart.getCartByUserId(req.session.userId, (err, data) => {
-            if (err) {
-                res.status(500).send({ message: err.message || "Ocurrió algún error al recuperar el carrito." });
-            } else {
-                let total = 0;
-                data.forEach(item => {
-                    total += item.total;
-                });
-                res.render('carrito', { cartItems: data, total: total });
-            }
-        });
-    } else {
-        res.redirect('/login');
-    }
+    const userId = req.params.userId;
+    Cart.getCartByUserId(userId, (err, data) => {
+        if (err) {
+            res.status(500).json({ message: err.message || "Error al recuperar carrito." });
+        } else {
+            let total = 0;
+            data.forEach(item => {
+                total += item.total;
+            });
+            res.json({ items: data, total: total });
+        }
+    });
 };
 
 exports.removeFromCart = (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/login');
-    }
-    Cart.removeFromCart(req.params.id, (err, data) => {
+    const cartId = req.params.cartId;
+    Cart.removeFromCart(cartId, (err, data) => {
         if (err) {
-            res.status(500).send({ message: "No se pudo eliminar el artículo del carrito con id " + req.params.id });
+            res.status(500).json({ message: "No se pudo eliminar el artículo del carrito." });
         } else {
-            res.redirect('/carrito');
+            res.json({ message: "Artículo eliminado." });
         }
     });
 };
 
 exports.checkout = (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/login');
-    }
+    const userId = req.body.user_id;
 
-    Cart.getCartByUserId(req.session.userId, (err, cartItems) => {
+    Cart.getCartByUserId(userId, (err, cartItems) => {
         if (err || cartItems.length === 0) {
-            return res.redirect('/carrito');
+            return res.status(400).json({ message: "El carrito está vacío o hubo un error." });
         }
 
         let totalAmount = 0;
@@ -68,16 +57,13 @@ exports.checkout = (req, res) => {
             itemsDescription += `${item.name} (x${item.quantity}), `;
         });
 
-        Cart.createSale(req.session.userId, totalAmount, itemsDescription, (err, data) => {
+        Cart.createSale(userId, totalAmount, itemsDescription, cartItems, (err, data) => {
             if (err) {
-                return res.status(500).send({ message: "Error al procesar la venta." });
+                return res.status(500).json({ message: "Error al procesar la venta." });
             }
 
-            // Clear cart after successful sale
-            Cart.clearCart(req.session.userId, (err, result) => {
-                // Redirect to home with success message (handled in frontend via query param or similar, 
-                // but for now just redirecting to home as requested)
-                res.redirect('/tienda?status=success');
+            Cart.clearCart(userId, (err, result) => {
+                res.json({ message: "Venta exitosa", saleId: data.id });
             });
         });
     });

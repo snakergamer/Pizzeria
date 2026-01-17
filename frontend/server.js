@@ -5,7 +5,7 @@ const http = require('http');
 
 const app = express();
 const PORT = 8080;
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = 'http://localhost:3000/api'; // Updated to use /api prefix
 
 function fetchFromBackend(url, options = {}) {
     return new Promise((resolve, reject) => {
@@ -23,12 +23,14 @@ function fetchFromBackend(url, options = {}) {
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
                 try {
+                    const parsedData = JSON.parse(data);
                     resolve({
                         ok: res.statusCode >= 200 && res.statusCode < 300,
                         status: res.statusCode,
-                        data: JSON.parse(data)
+                        data: parsedData
                     });
                 } catch (e) {
+                    console.error("Error parsing JSON from backend:", data); // Log raw data for debug
                     resolve({
                         ok: res.statusCode >= 200 && res.statusCode < 300,
                         status: res.statusCode,
@@ -46,6 +48,7 @@ function fetchFromBackend(url, options = {}) {
     });
 }
 
+// Ensure views directory is correct
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -60,449 +63,267 @@ app.use(session({
     cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
 }));
 
+// Middleware to expose session user to all views
+// Middleware to expose session user to all views
+app.use((req, res, next) => {
+    // Expose directly for compatibility with explicit generic views
+    res.locals.username = req.session.username;
+    res.locals.email = req.session.email;
+
+    // Also keep user object if needed by some views
+    res.locals.user = {
+        username: req.session.username,
+        email: req.session.email
+    };
+    res.locals.role = req.session.role; // Expose role
+    next();
+});
+
+// --- ROUTES ---
+
 app.get('/', (req, res) => {
-    res.render('login', { 
-        title: 'Login - Pizzería',
-        showHeader: false,
-        error: null,
-        success: null
-    });
+    if (req.session.loggedin) {
+        return res.redirect('/tienda');
+    }
+    res.render('login', { error: null });
+});
+
+app.get('/login', (req, res) => {
+    if (req.session.loggedin) {
+        return res.redirect('/tienda');
+    }
+    res.render('login', { error: null });
 });
 
 app.get('/register', (req, res) => {
-    res.render('register', { 
-        title: 'Registro - Pizzería',
-        showHeader: false,
-        error: null,
-        success: null
-    });
+    if (req.session.loggedin) {
+        return res.redirect('/tienda');
+    }
+    res.render('register', { error: null });
 });
 
 app.post('/login', async (req, res) => {
-    console.log('🔑 Datos recibidos en /login:', req.body);
-    
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-        return res.render('login', {
-            title: 'Login - Pizzería',
-            showHeader: false,
-            error: 'El correo y la contraseña son requeridos',
-            success: null
-        });
-    }
-    
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/login`, {
+        const result = await fetchFromBackend(`${BACKEND_URL}/login`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: { email, password }
         });
-        
-        if (result.ok && result.data.user) {
+
+        if (result.ok) {
             req.session.loggedin = true;
             req.session.userId = result.data.user.id;
             req.session.username = result.data.user.username;
             req.session.email = result.data.user.email;
-            
-            console.log('✅ Login exitoso:', result.data.user.username);
-            res.redirect('/tienda');
+            req.session.role = result.data.user.role; // Save role
+
+            if (result.data.user.role === 'admin') {
+                res.redirect('/admin');
+            } else {
+                res.redirect('/tienda');
+            }
         } else {
-            return res.render('login', {
-                title: 'Login - Pizzería',
-                showHeader: false,
-                error: result.data.message || 'Correo o contraseña incorrectos',
-                success: null
-            });
+            res.render('login', { error: result.data.message || 'Error de login' });
         }
     } catch (err) {
-        console.error('❌ Error en login:', err);
-        return res.render('login', {
-            title: 'Login - Pizzería',
-            showHeader: false,
-            error: 'Error al conectar con el servidor',
-            success: null
-        });
+        res.render('login', { error: 'Error de conexión' });
     }
 });
 
 app.post('/register', async (req, res) => {
-    console.log('📝 Solicitud POST /register:', { username: req.body.username, email: req.body.email });
-    
-    const { username, email, password, confirm } = req.body;
-    
-    if (!username || !email || !password || !confirm) {
-        return res.render('register', {
-            title: 'Registro - Pizzería',
-            showHeader: false,
-            error: 'Todos los campos son requeridos',
-            success: null
-        });
-    }
-    
-    if (password !== confirm) {
-        return res.render('register', {
-            title: 'Registro - Pizzería',
-            showHeader: false,
-            success: null,
-            error: 'Las contraseñas no coinciden'
-        });
-    }
-    
+    const { username, email, password } = req.body;
     try {
-        console.log('📤 Enviando solicitud al backend...');
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/register`, {
+        const result = await fetchFromBackend(`${BACKEND_URL}/register`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: { username, email, password }
         });
-        
-        console.log('📥 Respuesta del backend:', { status: result.status, ok: result.ok, message: result.data.message });
-        
-        if (result.ok && result.data.user) {
-            console.log('✅ Usuario registrado exitosamente:', result.data.user.username);
-            
-            return res.render('login', {
-                title: 'Login - Pizzería',
-                showHeader: false,
-                error: null,
-                success: '¡Usuario registrado! Ahora inicia sesión.'
-            });
+
+        if (result.ok) {
+            // Auto login
+            req.session.loggedin = true;
+            req.session.userId = result.data.user.id;
+            req.session.username = result.data.user.username;
+            req.session.email = result.data.user.email;
+            req.session.role = result.data.user.role || 'user';
+            res.redirect('/tienda');
         } else {
-            console.warn('⚠️ Error en registro:', result.data.message);
-            return res.render('register', {
-                title: 'Registro - Pizzería',
-                showHeader: false,
-                error: result.data.message || 'Error al registrar',
-                success: null
-            });
+            res.render('register', { error: result.data.message });
         }
     } catch (err) {
-        console.error('❌ Error en registro:', err);
-        return res.render('register', {
-            title: 'Registro - Pizzería',
-            showHeader: false,
-            error: 'Error al conectar con el servidor',
-            success: null
-        });
+        res.render('register', { error: 'Error de conexión' });
     }
-});
-
-app.post('/logout', (req, res) => {
-    console.log('👋 Usuario cerró sesión');
-    req.session.loggedin = false;
-    req.session.destroy();
-    res.redirect('/');
 });
 
 app.get('/logout', (req, res) => {
-    console.log('👋 Usuario cerró sesión');
-    req.session.loggedin = false;
     req.session.destroy();
     res.redirect('/');
 });
 
 app.get('/tienda', async (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
+    if (!req.session.loggedin) return res.redirect('/');
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/products`);
-        const products = result.data.products || [];
-        
-        const user = {
-            id: req.session.userId,
-            username: req.session.username,
-            email: req.session.email
-        };
-        
-        res.render('index', { 
-            title: 'Tienda - Pizzería',
-            user: user,
-            products: products,
-            showHeader: true
-        });
+        const result = await fetchFromBackend(`${BACKEND_URL}/products`);
+        res.render('index', { products: result.data.products });
     } catch (err) {
-        console.error('❌ Error al cargar productos:', err);
-        res.render('index', { 
-            title: 'Tienda - Pizzería',
-            user: {
-                username: req.session.username,
-                email: req.session.email
-            },
-            products: [],
-            showHeader: true,
-            error: 'Error al cargar los productos'
+        res.send("Error cargando productos");
+    }
+});
+
+app.get('/perfil', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    try {
+        const result = await fetchFromBackend(`${BACKEND_URL}/profile/${req.session.userId}`);
+        res.render('perfil', { user: result.data.user, history: result.data.history });
+    } catch (err) {
+        res.send("Error cargando perfil");
+    }
+});
+
+app.post('/perfil/update', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    try {
+        const result = await fetchFromBackend(`${BACKEND_URL}/profile/${req.session.userId}`, {
+            method: 'PUT',
+            body: req.body
         });
+        if (result.ok) {
+            req.session.username = result.data.user.username;
+            res.redirect('/perfil');
+        } else {
+            res.send("Error actualizando perfil");
+        }
+    } catch (err) {
+        res.send("Error de conexión");
     }
-});
-
-app.get('/home', (req, res) => {
-    res.redirect('/tienda');
-});
-
-app.get('/perfil', (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
-    const user = {
-        id: req.session.userId,
-        username: req.session.username,
-        email: req.session.email
-    };
-    
-    res.render('perfil', { 
-        title: 'Perfil - Pizzería',
-        user: user,
-        showHeader: true
-    });
-});
-
-app.get('/profile', (req, res) => {
-    res.redirect('/perfil');
 });
 
 app.get('/carrito', async (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
-    console.log('📦 Obteniendo carrito para usuario:', req.session.userId);
-    
+    if (!req.session.loggedin) return res.redirect('/');
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/cart/${req.session.userId}`);
-        
-        console.log('📊 Carrito obtenido:', { items: result.data.items?.length || 0, total: result.data.total });
-        
-        const cartItems = result.data.items || [];
-        const total = result.data.total || 0;
-        
-        const user = {
-            id: req.session.userId,
-            username: req.session.username
-        };
-        
-        res.render('carrito', { 
-            title: 'Carrito - Pizzería',
-            user: user,
-            showHeader: true,
-            cartItems: cartItems,
-            total: total
-        });
+        const result = await fetchFromBackend(`${BACKEND_URL}/cart/${req.session.userId}`);
+        res.render('carrito', { cartItems: result.data.items, total: result.data.total });
     } catch (err) {
-        console.error('❌ Error al cargar carrito:', err);
-        res.render('carrito', { 
-            title: 'Carrito - Pizzería',
-            user: {
-                id: req.session.userId,
-                username: req.session.username
-            },
-            showHeader: true,
-            cartItems: [],
-            total: 0
-        });
+        res.render('carrito', { cartItems: [], total: 0 });
     }
 });
 
 app.post('/carrito/add', async (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
-    const { product_id, quantity } = req.body;
-    console.log('🛒 Solicitud POST /carrito/add:', { product_id, quantity });
-    console.log('👤 Usuario:', req.session.userId);
-    
+    if (!req.session.loggedin) return res.redirect('/');
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/cart`, {
+        await fetchFromBackend(`${BACKEND_URL}/cart`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: {
                 user_id: req.session.userId,
-                product_id: parseInt(product_id),
-                quantity: parseInt(quantity) || 1
+                product_id: req.body.product_id,
+                quantity: req.body.quantity
             }
         });
-        
-        console.log('📦 Respuesta del backend:', { status: result.status, ok: result.ok });
-        
-        if (result.ok) {
-            console.log('✅ Producto añadido al carrito');
-            res.redirect('/carrito');
-        } else {
-            console.error('❌ Error:', result.data.message);
-            res.redirect('/tienda');
-        }
+        res.redirect('/tienda'); // Redirect back to store after adding
     } catch (err) {
-        console.error('❌ Error al añadir al carrito:', err);
         res.redirect('/tienda');
     }
 });
 
-app.get('/cart', (req, res) => {
-    res.redirect('/carrito');
-});
-
 app.get('/carrito/remove/:id', async (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
-    console.log('🗑️ Eliminando del carrito:', req.params.id);
-    
+    if (!req.session.loggedin) return res.redirect('/');
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/cart/${req.params.id}/user/${req.session.userId}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
+        await fetchFromBackend(`${BACKEND_URL}/cart/${req.params.id}/user/${req.session.userId}`, {
+            method: 'DELETE'
         });
-        
-        if (result.ok) {
-            console.log('✅ Producto eliminado del carrito');
-        } else {
-            console.error('❌ Error:', result.data.message);
-        }
         res.redirect('/carrito');
     } catch (err) {
-        console.error('❌ Error al eliminar del carrito:', err);
         res.redirect('/carrito');
     }
 });
 
 app.post('/comprar', async (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
-    console.log('💳 Procesando compra para usuario:', req.session.userId);
-    
+    if (!req.session.loggedin) return res.redirect('/');
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/checkout`, {
+        const result = await fetchFromBackend(`${BACKEND_URL}/checkout`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: { user_id: req.session.userId }
         });
-        
         if (result.ok) {
-            console.log('✅ Compra realizada exitosamente');
             res.redirect('/tienda?status=success');
         } else {
-            console.error('❌ Error en compra:', result.data.message);
-            res.render('carrito', {
-                title: 'Carrito - Pizzería',
-                user: { id: req.session.userId, username: req.session.username },
-                showHeader: true,
-                cartItems: [],
-                total: 0,
-                error: result.data.message || 'Error al procesar la compra'
-            });
+            res.redirect('/carrito');
         }
     } catch (err) {
-        console.error('❌ Error al procesar compra:', err);
         res.redirect('/carrito');
     }
 });
 
-app.post('/perfil/update', async (req, res) => {
-    if (!req.session.loggedin) {
-        return res.redirect('/');
-    }
-    
-    const { username, email, password } = req.body;
-    
-    console.log('✏️ Actualizando perfil:', { username, email });
-    
+// --- ADMIN ROUTES ---
+
+app.get('/admin', async (req, res) => {
+    if (!req.session.loggedin || req.session.role !== 'admin') return res.redirect('/tienda');
     try {
-        const result = await fetchFromBackend(`${BACKEND_URL}/api/profile/${req.session.userId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: { username, email, password }
-        });
-        
-        if (result.ok) {
-            req.session.username = username;
-            req.session.email = email;
-            
-            console.log('✅ Perfil actualizado exitosamente');
-            res.render('perfil', {
-                title: 'Perfil - Pizzería',
-                user: {
-                    id: req.session.userId,
-                    username: req.session.username,
-                    email: req.session.email
-                },
-                showHeader: true,
-                success: 'Perfil actualizado exitosamente'
-            });
-        } else {
-            console.error('❌ Error al actualizar:', result.data.message);
-            res.render('perfil', {
-                title: 'Perfil - Pizzería',
-                user: {
-                    id: req.session.userId,
-                    username: req.session.username,
-                    email: req.session.email
-                },
-                showHeader: true,
-                error: result.data.message || 'Error al actualizar perfil'
-            });
-        }
+        // Reuse product endpoint, but render admin view
+        const result = await fetchFromBackend(`${BACKEND_URL}/products`);
+        res.render('admin', { products: result.data.products });
     } catch (err) {
-        console.error('❌ Error al actualizar perfil:', err);
-        res.render('perfil', {
-            title: 'Perfil - Pizzería',
-            user: {
-                id: req.session.userId,
-                username: req.session.username,
-                email: req.session.email
-            },
-            showHeader: true,
-            error: 'Error al conectar con el servidor'
-        });
+        res.send("Error cargando panel admin");
     }
 });
 
+app.post('/admin/add', async (req, res) => {
+    if (!req.session.loggedin || req.session.role !== 'admin') return res.redirect('/tienda');
+    try {
+        const result = await fetchFromBackend(`${BACKEND_URL}/admin/add`, {
+            method: 'POST',
+            body: req.body
+        });
+
+        if (result.ok && result.data.status === 'success') {
+            res.redirect(`/admin?status=success&message=${encodeURIComponent(result.data.message)}`);
+        } else {
+            const msg = result.data.message || "Error al agregar producto";
+            res.redirect(`/admin?status=error&message=${encodeURIComponent(msg)}`);
+        }
+    } catch (err) {
+        res.redirect('/admin?status=error&message=Error+de+conexión');
+    }
+});
+
+app.get('/admin/delete/:id', async (req, res) => {
+    if (!req.session.loggedin || req.session.role !== 'admin') return res.redirect('/tienda');
+    try {
+        const result = await fetchFromBackend(`${BACKEND_URL}/admin/delete/${req.params.id}`, {
+            method: 'DELETE'
+        });
+
+        if (result.ok && result.data.status === 'success') {
+            res.redirect(`/admin?status=success&message=${encodeURIComponent(result.data.message)}`);
+        } else {
+            const msg = result.data.message || "Error al eliminar producto";
+            res.redirect(`/admin?status=error&message=${encodeURIComponent(msg)}`);
+        }
+    } catch (err) {
+        res.redirect('/admin?status=error&message=Error+de+conexión');
+    }
+});
+
+app.post('/admin/restock', async (req, res) => {
+    if (!req.session.loggedin || req.session.role !== 'admin') return res.redirect('/tienda');
+    try {
+        // req.body should contain product_id and amount
+        const result = await fetchFromBackend(`${BACKEND_URL}/admin/restock/${req.body.product_id}`, {
+            method: 'POST',
+            body: { amount: req.body.amount }
+        });
+
+        if (result.ok && result.data.status === 'success') {
+            res.redirect(`/admin?status=success&message=${encodeURIComponent(result.data.message)}`);
+        } else {
+            const msg = result.data.message || "Error al reponer stock";
+            res.redirect(`/admin?status=error&message=${encodeURIComponent(msg)}`);
+        }
+    } catch (err) {
+        res.redirect('/admin?status=error&message=Error+de+conexión');
+    }
+});
+
+
 app.listen(PORT, () => {
-    console.log(`✅ Frontend EJS corriendo en: http://localhost:${PORT}`);
-    
-    setTimeout(() => {
-        console.log('🔍 Verificando conexión a backend...');
-        const http = require('http');
-        const req = http.get('http://localhost:3000/api/health', (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    const result = JSON.parse(data);
-                    if (result.status === 'ok') {
-                        console.log('✅ Backend y Base de Datos conectados correctamente');
-                    } else {
-                        console.warn('⚠️ Backend respondió pero hay problemas con BD');
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Error al verificar backend');
-                }
-            });
-        });
-        req.on('error', () => {
-            console.error('❌ NO SE PUEDE CONECTAR AL BACKEND (puerto 3000)');
-            console.error('❌ Asegúrate de que el backend esté ejecutándose');
-        });
-    }, 500);
-    
-    console.log('📋 Rutas disponibles:');
-    console.log('   GET  /              (Login)');
-    console.log('   GET  /register      (Registro)');
-    console.log('   POST /login         ← IMPORTANTE!');
-    console.log('   POST /register      ← IMPORTANTE!');
-    console.log('   GET  /logout        (Cerrar sesión)');
-    console.log('   POST /logout        (Cerrar sesión)');
-    console.log('   GET  /tienda        (Tienda/Inicio)');
-    console.log('   GET  /perfil        (Perfil usuario)');
-    console.log('   POST /perfil/update ← IMPORTANTE! (Actualizar perfil)');
-    console.log('   GET  /carrito       (Carrito de compras)');
-    console.log('   POST /carrito/add   ← IMPORTANTE! (Añadir al carrito)');
-    console.log('   GET  /carrito/remove/:id (Eliminar del carrito)');
-    console.log('   POST /comprar       ← IMPORTANTE! (Procesar compra)');
+    console.log(`Frontend running on http://localhost:${PORT}`);
 });
